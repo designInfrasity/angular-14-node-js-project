@@ -43,6 +43,9 @@ Integration (run back-end & front-end on same server/port)
 
 > [Integrate Vue with Node.js Restful Services](https://www.bezkoder.com/serve-vue-app-express/)
 
+## Prerequisites
+- **Node.js 18+** is required
+
 ## Project setup
 ```
 npm install
