@@ -51,6 +51,10 @@ Serverless with Firebase:
 
 ## Project setup
 
+### Prerequisites
+- **Node.js 18+** is required for this project
+- Install Node.js 18 or higher from [nodejs.org](https://nodejs.org/) or use nvm: `nvm install 18 && nvm use 18`
+
 ### Node.js Server
 ```
 cd node-js-server
