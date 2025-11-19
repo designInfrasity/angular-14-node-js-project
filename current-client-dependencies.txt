@@ -1,0 +1,53 @@
+Angular 14 Client (angular-14-client) - Current Dependencies Snapshot
+======================================================================
+
+Package: angular-14-crud-example@0.0.0
+Location: /code/angular-14-client
+
+NOTE: This snapshot is based on package.json declarations.
+      Full dependency tree requires 'npm install' followed by 'npm list --depth=0'
+
+PRODUCTION DEPENDENCIES (from package.json):
+--------------------------------------------
+@angular/animations: ^14.0.0          ← Update to 14.2.0+ recommended
+@angular/common: ^14.0.0              ← Update to 14.2.0+ recommended
+@angular/compiler: ^14.0.0            ← Update to 14.2.0+ recommended
+@angular/core: ^14.0.0                ← Update to 14.2.0+ recommended
+@angular/forms: ^14.0.0               ← Update to 14.2.0+ recommended
+@angular/platform-browser: ^14.0.0    ← Update to 14.2.0+ recommended
+@angular/platform-browser-dynamic: ^14.0.0  ← Update to 14.2.0+ recommended
+@angular/router: ^14.0.0              ← Update to 14.2.0+ recommended
+bootstrap: ^4.6.1                     ← Compatible, no update needed
+rxjs: ~7.5.0                          ← Update to 7.8.1+ recommended
+tslib: ^2.3.0                         ← Update to 2.6.0+ recommended
+zone.js: ~0.11.4                      ← Update to 0.11.8+ recommended
+
+DEV DEPENDENCIES (from package.json):
+-------------------------------------
+@angular-devkit/build-angular: ^14.0.2   ← Update to 14.2.0+ recommended
+@angular/cli: ~14.0.2                    ← Update to 14.2.0+ recommended
+@angular/compiler-cli: ^14.0.0           ← Update to 14.2.0+ recommended
+@types/jasmine: ~4.0.0                   ← Compatible
+jasmine-core: ~4.1.0                     ← Update to 4.6.0+ recommended
+karma: ~6.3.0                            ← Update to 6.4.2+ for Node.js 18
+karma-chrome-launcher: ~3.1.0            ← Update to 3.2.0+ recommended
+karma-coverage: ~2.2.0                   ← Compatible
+karma-jasmine: ~5.0.0                    ← Update to 5.1.0+ recommended
+karma-jasmine-html-reporter: ~1.7.0      ← Update to 2.0.0+ recommended
+typescript: ~4.7.2                       ← Update to 4.9.5 for Node.js 18
+
+ENGINES FIELD:
+--------------
+NOT SPECIFIED - No Node.js version requirement currently enforced
+
+.nvmrc FILE:
+------------
+NOT PRESENT
+
+NOTES:
+------
+- Angular 14.0.0 works with Node.js 18, but 14.2.0+ recommended for optimal support
+- TypeScript 4.9.5 provides improved type definitions for Node.js 18
+- Karma 6.4.2 has better Node.js 18 compatibility
+- No ESM-only dependencies detected
+- package-lock.json exists (last modified: Nov 19 06:50)
