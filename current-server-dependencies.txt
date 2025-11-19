@@ -1,0 +1,34 @@
+Node.js Server (node-js-server) - Current Dependencies Snapshot
+================================================================
+
+Package: nodejs-express-sequelize-mysql@1.0.0
+Location: /code/node-js-server
+
+NOTE: This snapshot is based on package.json declarations.
+      Full dependency tree requires 'npm install' followed by 'npm list --depth=0'
+
+PRODUCTION DEPENDENCIES (from package.json):
+--------------------------------------------
+cors: ^2.8.5
+express: ^4.17.1         ← CRITICAL: Requires update to 4.18.2+ for Node.js 18
+mysql2: ^2.0.2           ← CRITICAL: Requires update to 3.6.0+ for OpenSSL 3.0
+sequelize: ^6.21.0       ← CRITICAL: Requires update to 6.33.0+ for mysql2 3.x
+
+DEV DEPENDENCIES:
+-----------------
+(none specified)
+
+ENGINES FIELD:
+--------------
+NOT SPECIFIED - No Node.js version requirement currently enforced
+
+.nvmrc FILE:
+------------
+NOT PRESENT
+
+NOTES:
+------
+- All dependencies require updates for Node.js 18 compatibility
+- express 4.17.1 has security vulnerabilities (qs dependency)
+- mysql2 2.0.2 incompatible with OpenSSL 3.0 (Node.js 18)
+- sequelize 6.21.0 needs update to work with mysql2 3.x
