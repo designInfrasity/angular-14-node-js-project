@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: crud-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: testdb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crud-network
+
+  backend:
+    build:
+      context: ./node-js-server
+      dockerfile: Dockerfile
+    container_name: crud-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: 123456
+      DB_NAME: testdb
+    ports:
+      - "8080:8080"
+    networks:
+      - crud-network
+
+  frontend:
+    build:
+      context: ./angular-14-client
+      dockerfile: Dockerfile
+    container_name: crud-frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+    networks:
+      - crud-network
+
+volumes:
+  mysql-data:
+    driver: local
+
+networks:
+  crud-network:
+    driver: bridge
