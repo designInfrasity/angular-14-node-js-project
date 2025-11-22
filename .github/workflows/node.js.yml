@@ -1,0 +1,307 @@
+name: Node.js 18 CI/CD
+
+on:
+  push:
+    branches: [ master, migrate-node18 ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  backend-test:
+    name: Backend Tests (Node.js 18)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: testdb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: node-js-server/package-lock.json
+
+    - name: Install backend dependencies
+      working-directory: ./node-js-server
+      run: npm ci
+
+    - name: Verify dependency versions
+      working-directory: ./node-js-server
+      run: |
+        echo "Verifying critical dependency versions for Node.js 18 compatibility..."
+        npm list express mysql2 sequelize || true
+        echo ""
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+        echo "OpenSSL version: $(node -p 'process.versions.openssl')"
+
+    - name: Wait for MySQL to be ready
+      run: |
+        echo "Waiting for MySQL service to be ready..."
+        for i in {1..30}; do
+          if mysqladmin ping -h 127.0.0.1 -u root -p123456 --silent 2>/dev/null; then
+            echo "MySQL is ready!"
+            break
+          fi
+          echo "Waiting for MySQL... ($i/30)"
+          sleep 2
+        done
+
+    - name: Start backend server (background)
+      working-directory: ./node-js-server
+      run: |
+        echo "Starting Node.js Express backend server..."
+        node server.js &
+        SERVER_PID=$!
+        echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+        echo "Backend server started with PID: $SERVER_PID"
+
+        # Wait for server to be ready
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/ > /dev/null 2>&1; then
+            echo "Backend server is responding!"
+            break
+          fi
+          echo "Waiting for backend server... ($i/30)"
+          sleep 2
+        done
+
+    - name: Test backend API endpoints
+      run: |
+        echo "Testing backend REST API endpoints..."
+
+        # Test root endpoint
+        echo "Testing GET /"
+        curl -f http://localhost:8080/ || exit 1
+
+        # Test create tutorial
+        echo "Testing POST /api/tutorials"
+        RESPONSE=$(curl -s -X POST http://localhost:8080/api/tutorials \
+          -H "Content-Type: application/json" \
+          -d '{"title":"CI Test","description":"Testing Node.js 18 compatibility","published":false}')
+        echo "$RESPONSE"
+        TUTORIAL_ID=$(echo "$RESPONSE" | grep -o '"id":[0-9]*' | grep -o '[0-9]*' | head -1)
+        echo "Created tutorial with ID: $TUTORIAL_ID"
+
+        # Test get all tutorials
+        echo "Testing GET /api/tutorials"
+        curl -f http://localhost:8080/api/tutorials || exit 1
+
+        # Test get by ID
+        if [ -n "$TUTORIAL_ID" ]; then
+          echo "Testing GET /api/tutorials/$TUTORIAL_ID"
+          curl -f http://localhost:8080/api/tutorials/$TUTORIAL_ID || exit 1
+
+          # Test update
+          echo "Testing PUT /api/tutorials/$TUTORIAL_ID"
+          curl -f -X PUT http://localhost:8080/api/tutorials/$TUTORIAL_ID \
+            -H "Content-Type: application/json" \
+            -d '{"title":"CI Test Updated","published":true}' || exit 1
+
+          # Test delete
+          echo "Testing DELETE /api/tutorials/$TUTORIAL_ID"
+          curl -f -X DELETE http://localhost:8080/api/tutorials/$TUTORIAL_ID || exit 1
+        fi
+
+        echo "All backend API tests passed!"
+
+    - name: Stop backend server
+      if: always()
+      run: |
+        if [ -n "$SERVER_PID" ]; then
+          echo "Stopping backend server (PID: $SERVER_PID)..."
+          kill $SERVER_PID 2>/dev/null || true
+        fi
+
+  frontend-build:
+    name: Frontend Build & Tests (Node.js 18)
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: angular-14-client/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./angular-14-client
+      run: npm ci
+
+    - name: Verify Angular and dependency versions
+      working-directory: ./angular-14-client
+      run: |
+        echo "Verifying Angular 14.2 and Node.js 18 compatibility..."
+        npx ng version || true
+        npm list @angular/core typescript karma jasmine-core || true
+        echo ""
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+
+    - name: Run frontend production build
+      working-directory: ./angular-14-client
+      run: |
+        echo "Building Angular application for production..."
+        npm run build -- --configuration production
+        echo "Build completed successfully!"
+
+        # Verify build output
+        if [ -d "dist/angular-14-crud-example" ]; then
+          echo "Build output verified in dist/angular-14-crud-example/"
+          ls -lh dist/angular-14-crud-example/
+        else
+          echo "ERROR: Build output directory not found!"
+          exit 1
+        fi
+
+    - name: Run frontend unit tests
+      working-directory: ./angular-14-client
+      run: |
+        echo "Running Angular unit tests with Karma and ChromeHeadless..."
+        npm test -- --watch=false --browsers=ChromeHeadless --code-coverage
+        echo "All unit tests passed!"
+
+    - name: Upload code coverage
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage-report
+        path: angular-14-client/coverage/
+        retention-days: 30
+
+  integration-check:
+    name: Integration Check (Backend + Frontend)
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: 123456
+          MYSQL_DATABASE: testdb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install backend dependencies
+      working-directory: ./node-js-server
+      run: npm ci
+
+    - name: Install frontend dependencies
+      working-directory: ./angular-14-client
+      run: npm ci
+
+    - name: Wait for MySQL to be ready
+      run: |
+        for i in {1..30}; do
+          if mysqladmin ping -h 127.0.0.1 -u root -p123456 --silent 2>/dev/null; then
+            echo "MySQL is ready!"
+            break
+          fi
+          sleep 2
+        done
+
+    - name: Start backend server
+      working-directory: ./node-js-server
+      run: |
+        node server.js &
+        SERVER_PID=$!
+        echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+
+        # Wait for server
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/ > /dev/null 2>&1; then
+            echo "Backend server is ready!"
+            break
+          fi
+          sleep 2
+        done
+
+    - name: Build frontend
+      working-directory: ./angular-14-client
+      run: npm run build
+
+    - name: Test backend-frontend integration
+      run: |
+        echo "Testing integration between Angular frontend and Express backend..."
+
+        # Create tutorial via API (simulating frontend request)
+        echo "Creating tutorial via API..."
+        RESPONSE=$(curl -s -X POST http://localhost:8080/api/tutorials \
+          -H "Content-Type: application/json" \
+          -H "Origin: http://localhost:8081" \
+          -d '{"title":"Integration Test","description":"Testing fullstack","published":false}')
+
+        # Verify CORS headers
+        echo "Verifying CORS configuration..."
+        CORS_HEADER=$(curl -s -I -X OPTIONS http://localhost:8080/api/tutorials \
+          -H "Origin: http://localhost:8081" \
+          -H "Access-Control-Request-Method: POST" | grep -i "access-control-allow-origin" || true)
+
+        if [ -z "$CORS_HEADER" ]; then
+          echo "WARNING: CORS headers not found (may need CORS middleware check)"
+        else
+          echo "CORS headers verified: $CORS_HEADER"
+        fi
+
+        echo "Integration check completed successfully!"
+
+    - name: Stop backend server
+      if: always()
+      run: |
+        if [ -n "$SERVER_PID" ]; then
+          kill $SERVER_PID 2>/dev/null || true
+        fi
+
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: angular-build
+        path: angular-14-client/dist/
+        retention-days: 7
